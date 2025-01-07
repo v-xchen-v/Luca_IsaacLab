@@ -87,14 +87,14 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         cone_cfg = RigidObjectCfg(
             prim_path="/World/envs/env_.*/Sphere",
             spawn=sim_utils.SphereCfg(
-                radius=0.1,
+                radius=0.04,
                 rigid_props=sim_utils.RigidBodyPropertiesCfg(),
-                mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
+                mass_props=sim_utils.MassPropertiesCfg(mass=0.16),
                 collision_props=sim_utils.CollisionPropertiesCfg(),
                 visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0), metallic=0.2),
             ),
             init_state=RigidObjectCfg.InitialStateCfg(
-                pos=(0.0, 0.0, 0.0), rot=(1.0, 0.0, 0.0, 0.0)),
+                pos=(-1.5, 0.0, 0.02), rot=(1.0, 0.0, 0.0, 0.0)),
         )
         self.sphere_object = RigidObject(cfg=cone_cfg)
         
@@ -109,7 +109,10 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         
 
 
+
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
+
+        
         self.actions = self.action_scale * actions.clone()
 
     def _apply_action(self) -> None:
@@ -152,7 +155,9 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         self.joint_vel = self.cartpole.data.joint_vel
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
-        out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self.dof_idx]) > self.cfg.max_cart_pos, dim=1)
+        # out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self.dof_idx]) > self.cfg.max_cart_pos, dim=1)
+        out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self.dof_idx]) > 10.0, dim=1)
+        out_of_bounds = torch.zeros_like(out_of_bounds)
         # out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
         return out_of_bounds, time_out
 
@@ -179,6 +184,39 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         self.cartpole.write_root_link_pose_to_sim(default_root_state[:, :7], env_ids)
         self.cartpole.write_root_com_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self.cartpole.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+        
+        
+        # reset the sphere as default position
+        # reset object
+        object_default_state = self.sphere_object.data.default_root_state.clone()[env_ids]
+        # pos_noise = sample_uniform(-1.0, 1.0, (len(env_ids), 3), device=self.device)
+
+        object_default_state[:, 0:3] = (
+            object_default_state[:, 0:3] + self.scene.env_origins[env_ids]
+        )
+
+        # rot_noise = sample_uniform(-1.0, 1.0, (len(env_ids), 2), device=self.device)  # noise for X and Y rotation
+        # object_default_state[:, 3:7] = randomize_rotation(
+        #     rot_noise[:, 0], rot_noise[:, 1], self.x_unit_tensor[env_ids], self.y_unit_tensor[env_ids]
+        # )
+
+        object_default_state[:, 7:] = torch.zeros_like(self.sphere_object.data.default_root_state[env_ids, 7:])
+        self.sphere_object.write_root_link_pose_to_sim(object_default_state[:, :7], env_ids)
+        self.sphere_object.write_root_com_velocity_to_sim(object_default_state[:, 7:], env_ids)
+        
+        # Ref: source/standalone/playground/throw_a_sphere.py
+        # throw the ball by apply a force at the beginning
+        body_ids, body_names = self.sphere_object.find_bodies(".*")
+        external_wrench_b = torch.zeros(self.sphere_object.num_instances, len(body_ids), 6, device=joint_pos.device)
+        # Every 2nd cube should have a force applied to it
+        external_wrench_b[:, :, 0] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
+        external_wrench_b[:, :, 2] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
+        self.sphere_object.set_external_force_and_torque(
+            forces=external_wrench_b[..., :3], 
+            torques=external_wrench_b[..., 3:], body_ids=body_ids)
+
+        # apply sim data
+        self.sphere_object.write_data_to_sim()
 
 
 @torch.jit.script
