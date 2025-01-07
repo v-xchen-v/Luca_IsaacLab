@@ -31,7 +31,7 @@ class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
     decimation = 2
     episode_length_s = 5.0
     action_scale = 100.0  # [N]
-    action_space = 1
+    action_space = 7
     observation_space = 4
     state_space = 0
 
@@ -39,9 +39,9 @@ class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
 
     # robot
-    robot_cfg: ArticulationCfg = CARTPOLE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
-    cart_dof_name = "slider_to_cart"#"realman_all"
-    pole_dof_name = "cart_to_pole"
+    robot_cfg: ArticulationCfg = REALMAN_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    # cart_dof_name = "realman_all"
+    # pole_dof_name = "realman_tmp"
 
     # scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
@@ -61,11 +61,15 @@ class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
 class SimplifiedCatchThrownEnv(DirectRLEnv):
     cfg: SimplifiedCatchThrownEnvCfg
 
-    def __init__(self, cfg: CartpoleEnvCfg, render_mode: str | None = None, **kwargs):
+    def __init__(self, cfg: SimplifiedCatchThrownEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
 
-        self._cart_dof_idx, _ = self.cartpole.find_joints(self.cfg.cart_dof_name)
-        self._pole_dof_idx, _ = self.cartpole.find_joints(self.cfg.pole_dof_name)
+        # self._cart_dof_idx, _ = self.cartpole.find_joints(self.cfg.cart_dof_name)
+        # self._pole_dof_idx, _ = self.cartpole.find_joints(self.cfg.pole_dof_name)
+        
+        # Ref: source/extensions/omni.isaac.lab/omni/isaac/lab/assets/articulation/articulation.py
+        dof_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+        self.dof_idx, self.dof_names = self.cartpole.find_joints(dof_names)
         self.action_scale = self.cfg.action_scale
 
         self.joint_pos = self.cartpole.data.joint_pos
@@ -109,7 +113,7 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         self.actions = self.action_scale * actions.clone()
 
     def _apply_action(self) -> None:
-        self.cartpole.set_joint_effort_target(self.actions, joint_ids=self._cart_dof_idx)
+        self.cartpole.set_joint_effort_target(self.actions, joint_ids=self.dof_idx)
 
     def _get_observations(self) -> dict:
         # obs = torch.cat(
@@ -135,10 +139,10 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
             self.cfg.rew_scale_pole_pos,
             self.cfg.rew_scale_cart_vel,
             self.cfg.rew_scale_pole_vel,
-            self.joint_pos[:, self._pole_dof_idx[0]],
-            self.joint_vel[:, self._pole_dof_idx[0]],
-            self.joint_pos[:, self._cart_dof_idx[0]],
-            self.joint_vel[:, self._cart_dof_idx[0]],
+            self.joint_pos[:, self.dof_idx[0]],
+            self.joint_vel[:, self.dof_idx[0]],
+            self.joint_pos[:, self.dof_idx[0]],
+            self.joint_vel[:, self.dof_idx[0]],
             self.reset_terminated,
         )
         return total_reward
@@ -148,8 +152,8 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         self.joint_vel = self.cartpole.data.joint_vel
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
-        out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self._cart_dof_idx]) > self.cfg.max_cart_pos, dim=1)
-        out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
+        out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self.dof_idx]) > self.cfg.max_cart_pos, dim=1)
+        # out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
         return out_of_bounds, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
@@ -158,10 +162,10 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         super()._reset_idx(env_ids)
 
         joint_pos = self.cartpole.data.default_joint_pos[env_ids]
-        joint_pos[:, self._pole_dof_idx] += sample_uniform(
+        joint_pos[:, self.dof_idx] += sample_uniform(
             self.cfg.initial_pole_angle_range[0] * math.pi,
             self.cfg.initial_pole_angle_range[1] * math.pi,
-            joint_pos[:, self._pole_dof_idx].shape,
+            joint_pos[:, self.dof_idx].shape,
             joint_pos.device,
         )
         joint_vel = self.cartpole.data.default_joint_vel[env_ids]

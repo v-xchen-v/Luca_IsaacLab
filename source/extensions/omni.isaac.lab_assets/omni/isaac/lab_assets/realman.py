@@ -48,22 +48,22 @@ REALMAN_CFG = ArticulationCfg(
         },
     ),
     actuators={
-        "realman_shoulder": ImplicitActuatorCfg(
-            joint_names_expr=["joint[1-4]"],
-            effort_limit=87.0,
-            velocity_limit=2.175,
-            stiffness=80.0,
-            damping=4.0,
-        ),
-        "realman_forearm": ImplicitActuatorCfg(
-            joint_names_expr=["joint[5-7]"],
-            effort_limit=12.0,
-            velocity_limit=2.61,
-            stiffness=80.0,
-            damping=4.0,
-        ),
+        # "realman_shoulder": ImplicitActuatorCfg(
+        #     joint_names_expr=["joint[1-4]"],
+        #     effort_limit=87.0,
+        #     velocity_limit=2.175,
+        #     stiffness=80.0,
+        #     damping=4.0,
+        # ),
+        # "realman_forearm": ImplicitActuatorCfg(
+        #     joint_names_expr=["joint[5-7]"],
+        #     effort_limit=12.0,
+        #     velocity_limit=2.61,
+        #     stiffness=80.0,
+        #     damping=4.0,
+        # ),
         "realman_all": ImplicitActuatorCfg(
-            joint_names_expr=["joint.*"],
+            joint_names_expr=["joint[1-7]"],
             effort_limit=12.0,
             velocity_limit=2.61,
             stiffness=80.0,
@@ -75,12 +75,12 @@ REALMAN_CFG = ArticulationCfg(
 """Configuration of Franka Emika Panda robot."""
 
 
-REALMAN_HIGH_PD_CFG = REALMAN_CFG.copy()
-REALMAN_HIGH_PD_CFG.spawn.rigid_props.disable_gravity = True
-REALMAN_HIGH_PD_CFG.actuators["realman_shoulder"].stiffness = 400.0
-REALMAN_HIGH_PD_CFG.actuators["realman_shoulder"].damping = 80.0
-REALMAN_HIGH_PD_CFG.actuators["realman_forearm"].stiffness = 400.0
-REALMAN_HIGH_PD_CFG.actuators["realman_forearm"].damping = 80.0
+# REALMAN_HIGH_PD_CFG = REALMAN_CFG.copy()
+# REALMAN_HIGH_PD_CFG.spawn.rigid_props.disable_gravity = True
+# REALMAN_HIGH_PD_CFG.actuators["realman_shoulder"].stiffness = 400.0
+# REALMAN_HIGH_PD_CFG.actuators["realman_shoulder"].damping = 80.0
+# REALMAN_HIGH_PD_CFG.actuators["realman_forearm"].stiffness = 400.0
+# REALMAN_HIGH_PD_CFG.actuators["realman_forearm"].damping = 80.0
 """Configuration of Franka Emika Panda robot with stiffer PD control.
 
 This configuration is useful for task-space control using differential IK.
