@@ -47,7 +47,7 @@ class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
 
     # reset
-    max_cart_pos = 3.0  # the cart is reset if it exceeds that position [m]
+    max_cart_pos = 2.0  # the cart is reset if it exceeds that position [m]
     initial_pole_angle_range = [-0.25, 0.25]  # the range in which the pole angle is sampled from on reset [rad]
 
     # reward scales
@@ -139,7 +139,10 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         # - robot arm end effector and sphere relative position
         
         # get sphere position and velocity
-        sphere_pos = self.sphere_object.data.root_link_state_w[:, :3] # position
+        sphere_pos = self.sphere_object.data.root_link_state_w[:, :3].clone() # position
+        # get pos relative to environment origins
+        sphere_pos -= self.scene.env_origins
+        
         sphere_vel = self.sphere_object.data.root_link_state_w[:, 7:11] # linear velocity
         
         # get robot arm end effector position and velocity
@@ -148,14 +151,17 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         # link7 is the end effector
         self.ee_idx, self.ee_name = self.cartpole.find_bodies("Link7")
         # self.cartpole.data.body_state_w [num_envs, num_bodies, 13], 13: [pos, rot, lin_vel, ang_vel]
-        end_effector_pos = self.cartpole.data.body_state_w[:, self.ee_idx, :3] # position
+        end_effector_pos = self.cartpole.data.body_state_w[:, self.ee_idx, :3].clone() # position
+        # reshape end_effector_pos from [num_envs, 1, 3] to [num_envs, 3]
+        end_effector_pos = end_effector_pos.squeeze(dim=1)
+        # get pos relative to environment origins
+        end_effector_pos -= self.scene.env_origins
         end_effector_vel = self.cartpole.data.body_state_w[:, self.ee_idx, 7:11] # linear velocity
+        end_effector_vel = end_effector_vel.squeeze(dim=1)
         # end_effector_pos = end_effector[0].get_pose()[:3]
         
         # get robot arm end effector and sphere relative position
-        # reshape end_effector_pos from [num_envs, 1, 3] to [num_envs, 3]
-        end_effector_pos = end_effector_pos.squeeze(dim=1)
-        end_effector_vel = end_effector_vel.squeeze(dim=1)
+
         relative_pos = sphere_pos - end_effector_pos
         
         # stack all the observations
@@ -186,8 +192,12 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         # out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self.dof_idx]) > self.cfg.max_cart_pos, dim=1)
-        out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self.dof_idx]) > 10.0, dim=1)
-        out_of_bounds = torch.zeros_like(out_of_bounds)
+        # if ball out of bounds, then terminate the episode
+        self.sphere_object.update(self.physics_dt)
+        sphere_pos = self.sphere_object.data.root_link_state_w[:, :3].clone()
+        sphere_pos = sphere_pos-self.scene.env_origins
+        out_of_bounds = torch.any(torch.abs(sphere_pos) > self.cfg.max_cart_pos, dim=1)
+        # out_of_bounds = torch.zeros_like(out_of_bounds)
         # out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
         return out_of_bounds, time_out
 
@@ -239,8 +249,8 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         body_ids, body_names = self.sphere_object.find_bodies(".*")
         external_wrench_b = torch.zeros(self.sphere_object.num_instances, len(body_ids), 6, device=joint_pos.device)
         # Every 2nd cube should have a force applied to it
-        external_wrench_b[:, :, 0] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
-        external_wrench_b[:, :, 2] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
+        external_wrench_b[env_ids, :, 0] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
+        external_wrench_b[env_ids, :, 2] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
         self.sphere_object.set_external_force_and_torque(
             forces=external_wrench_b[..., :3], 
             torques=external_wrench_b[..., 3:], body_ids=body_ids)
