@@ -32,7 +32,7 @@ class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
     episode_length_s = 5.0
     action_scale = 100.0  # [N]
     action_space = 7
-    observation_space = 4
+    observation_space = 7+7+3
     state_space = 0
 
     # simulation
@@ -132,6 +132,36 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         num_envs = self.joint_pos.shape[0]
         obs_shape = (num_envs, 4)
         obs = torch.rand(obs_shape)
+        
+        # real observation
+        # - sphere position and linear velocity
+        # - robot arm end effector position and velocity
+        # - robot arm end effector and sphere relative position
+        
+        # get sphere position and velocity
+        sphere_pos = self.sphere_object.data.root_link_state_w[:, :3] # position
+        sphere_vel = self.sphere_object.data.root_link_state_w[:, 7:11] # linear velocity
+        
+        # get robot arm end effector position and velocity
+        # end_effector_pos = self.joint_pos[:, self.dof_idx[-1]] # position
+        # end_effector_vel = self.joint_vel[:, self.dof_idx[-1]] # velocity
+        # link7 is the end effector
+        self.ee_idx, self.ee_name = self.cartpole.find_bodies("Link7")
+        # self.cartpole.data.body_state_w [num_envs, num_bodies, 13], 13: [pos, rot, lin_vel, ang_vel]
+        end_effector_pos = self.cartpole.data.body_state_w[:, self.ee_idx, :3] # position
+        end_effector_vel = self.cartpole.data.body_state_w[:, self.ee_idx, 7:11] # linear velocity
+        # end_effector_pos = end_effector[0].get_pose()[:3]
+        
+        # get robot arm end effector and sphere relative position
+        # reshape end_effector_pos from [num_envs, 1, 3] to [num_envs, 3]
+        end_effector_pos = end_effector_pos.squeeze(dim=1)
+        end_effector_vel = end_effector_vel.squeeze(dim=1)
+        relative_pos = sphere_pos - end_effector_pos
+        
+        # stack all the observations
+        obs = torch.cat((sphere_pos, sphere_vel, end_effector_pos, end_effector_vel, relative_pos), dim=-1)
+        
+        
         observations = {"policy": obs}
         return observations
 
