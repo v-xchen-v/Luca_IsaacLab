@@ -139,11 +139,11 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         # - robot arm end effector and sphere relative position
         
         # get sphere position and velocity
-        sphere_pos = self.sphere_object.data.root_link_state_w[:, :3].clone() # position
+        self.sphere_pos = self.sphere_object.data.root_link_state_w[:, :3].clone() # position
         # get pos relative to environment origins
-        sphere_pos -= self.scene.env_origins
+        self.sphere_pos -= self.scene.env_origins
         
-        sphere_vel = self.sphere_object.data.root_link_state_w[:, 7:11] # linear velocity
+        self.sphere_vel = self.sphere_object.data.root_link_state_w[:, 7:11] # linear velocity
         
         # get robot arm end effector position and velocity
         # end_effector_pos = self.joint_pos[:, self.dof_idx[-1]] # position
@@ -151,21 +151,21 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         # link7 is the end effector
         self.ee_idx, self.ee_name = self.cartpole.find_bodies("Link7")
         # self.cartpole.data.body_state_w [num_envs, num_bodies, 13], 13: [pos, rot, lin_vel, ang_vel]
-        end_effector_pos = self.cartpole.data.body_state_w[:, self.ee_idx, :3].clone() # position
-        # reshape end_effector_pos from [num_envs, 1, 3] to [num_envs, 3]
-        end_effector_pos = end_effector_pos.squeeze(dim=1)
+        self.end_effector_pos = self.cartpole.data.body_state_w[:, self.ee_idx, :3].clone() # position
+        # reshape self.end_effector_pos from [num_envs, 1, 3] to [num_envs, 3]
+        self.end_effector_pos = self.end_effector_pos.squeeze(dim=1)
         # get pos relative to environment origins
-        end_effector_pos -= self.scene.env_origins
-        end_effector_vel = self.cartpole.data.body_state_w[:, self.ee_idx, 7:11] # linear velocity
-        end_effector_vel = end_effector_vel.squeeze(dim=1)
+        self.end_effector_pos -= self.scene.env_origins
+        self.end_effector_vel = self.cartpole.data.body_state_w[:, self.ee_idx, 7:11] # linear velocity
+        self.end_effector_vel = self.end_effector_vel.squeeze(dim=1)
         # end_effector_pos = end_effector[0].get_pose()[:3]
         
         # get robot arm end effector and sphere relative position
 
-        relative_pos = sphere_pos - end_effector_pos
+        relative_pos = self.sphere_pos - self.end_effector_pos
         
         # stack all the observations
-        obs = torch.cat((sphere_pos, sphere_vel, end_effector_pos, end_effector_vel, relative_pos), dim=-1)
+        obs = torch.cat((self.sphere_pos, self.sphere_vel, self.end_effector_pos, self.end_effector_vel, relative_pos), dim=-1)
         
         
         observations = {"policy": obs}
@@ -178,10 +178,10 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
             self.cfg.rew_scale_pole_pos,
             self.cfg.rew_scale_cart_vel,
             self.cfg.rew_scale_pole_vel,
-            self.joint_pos[:, self.dof_idx[0]],
-            self.joint_vel[:, self.dof_idx[0]],
-            self.joint_pos[:, self.dof_idx[0]],
-            self.joint_vel[:, self.dof_idx[0]],
+            self.sphere_pos,
+            self.sphere_vel,
+            self.end_effector_pos,
+            self.end_effector_vel,
             self.reset_terminated,
         )
         return total_reward
@@ -199,6 +199,11 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         out_of_bounds = torch.any(torch.abs(sphere_pos) > self.cfg.max_cart_pos, dim=1)
         # out_of_bounds = torch.zeros_like(out_of_bounds)
         # out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
+        
+        # if the sphere is intercepted by the end effector, then terminate the episode
+        distance = torch.norm(sphere_pos - self.end_effector_pos, dim=1)
+        intercepted = distance < 0.1
+        out_of_bounds = intercepted | out_of_bounds
         return out_of_bounds, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
@@ -266,10 +271,10 @@ def compute_rewards(
     rew_scale_pole_pos: float,
     rew_scale_cart_vel: float,
     rew_scale_pole_vel: float,
-    pole_pos: torch.Tensor,
-    pole_vel: torch.Tensor,
-    cart_pos: torch.Tensor,
-    cart_vel: torch.Tensor,
+    sphere_pos: torch.Tensor,
+    sphere_vel: torch.Tensor,
+    ee_pos: torch.Tensor,
+    ee_vel: torch.Tensor,
     reset_terminated: torch.Tensor,
 ):
     # rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
@@ -279,7 +284,21 @@ def compute_rewards(
     # rew_pole_vel = rew_scale_pole_vel * torch.sum(torch.abs(pole_vel).unsqueeze(dim=1), dim=-1)
     # total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_vel + rew_pole_vel
     
-    # a ramdom reward
-    num_envs = pole_pos.shape[0]
-    total_reward = torch.rand(num_envs)
+    # # a ramdom reward
+    # num_envs = pole_pos.shape[0]
+    # total_reward = torch.rand(num_envs)
+    
+    # real reward
+    # - position reward of reducing the distance between the sphere and the end effector
+    # - a larger reward if the sphere is successfully intercepted by the end effector
+    # - a smaller reward if the sphere is not intercepted by the end effector    
+    total_reward = torch.zeros_like(reset_terminated)
+    # get distance between sphere and end effector
+    distance = torch.norm(sphere_pos - ee_pos, dim=1)
+    
+    # determine if the sphere is intercepted by the end effector
+    intercepted = distance < 0.1
+    intercepted_reward = torch.where(intercepted, torch.tensor(1.0), torch.tensor(-1.0))
+    
+    total_reward = intercepted_reward  + distance*-1.0
     return total_reward
