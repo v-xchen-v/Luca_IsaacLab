@@ -10,6 +10,7 @@ import torch
 from collections.abc import Sequence
 
 from omni.isaac.lab_assets.cartpole import CARTPOLE_CFG
+from omni.isaac.lab_assets.realman import REALMAN_CFG
 
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import Articulation, ArticulationCfg
@@ -20,6 +21,9 @@ from omni.isaac.lab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.math import sample_uniform
 
+# Then you’ll probably have to start the SimulationApp() before importing those packages
+import omni.isaac.core.utils.prims as prim_utils
+from omni.isaac.lab.assets import RigidObjectCfg, RigidObject
 
 @configclass
 class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
@@ -36,7 +40,7 @@ class SimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
 
     # robot
     robot_cfg: ArticulationCfg = CARTPOLE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
-    cart_dof_name = "slider_to_cart"
+    cart_dof_name = "slider_to_cart"#"realman_all"
     pole_dof_name = "cart_to_pole"
 
     # scene
@@ -71,6 +75,25 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         self.cartpole = Articulation(self.cfg.robot_cfg)
         # add ground plane
         spawn_ground_plane(prim_path="/World/ground", cfg=GroundPlaneCfg())
+        
+        # add a ball
+        # Ref: source/extensions/omni.isaac.lab_tasks/omni/isaac/lab_tasks/direct/shadow_hand/shadow_hand_env_cfg.py
+  
+        # Rigid Object
+        cone_cfg = RigidObjectCfg(
+            prim_path="/World/envs/env_.*/Sphere",
+            spawn=sim_utils.SphereCfg(
+                radius=0.1,
+                rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+                mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
+                collision_props=sim_utils.CollisionPropertiesCfg(),
+                visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0), metallic=0.2),
+            ),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.0, 0.0, 0.0), rot=(1.0, 0.0, 0.0, 0.0)),
+        )
+        self.sphere_object = RigidObject(cfg=cone_cfg)
+        
         # clone, filter, and replicate
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=[])
@@ -79,6 +102,8 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         # add lights
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
+        
+
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = self.action_scale * actions.clone()
@@ -87,15 +112,19 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         self.cartpole.set_joint_effort_target(self.actions, joint_ids=self._cart_dof_idx)
 
     def _get_observations(self) -> dict:
-        obs = torch.cat(
-            (
-                self.joint_pos[:, self._pole_dof_idx[0]].unsqueeze(dim=1),
-                self.joint_vel[:, self._pole_dof_idx[0]].unsqueeze(dim=1),
-                self.joint_pos[:, self._cart_dof_idx[0]].unsqueeze(dim=1),
-                self.joint_vel[:, self._cart_dof_idx[0]].unsqueeze(dim=1),
-            ),
-            dim=-1,
-        )
+        # obs = torch.cat(
+        #     (
+        #         self.joint_pos[:, self._pole_dof_idx[0]].unsqueeze(dim=1),
+        #         self.joint_vel[:, self._pole_dof_idx[0]].unsqueeze(dim=1),
+        #         self.joint_pos[:, self._cart_dof_idx[0]].unsqueeze(dim=1),
+        #         self.joint_vel[:, self._cart_dof_idx[0]].unsqueeze(dim=1),
+        #     ),
+        #     dim=-1,
+        # )
+        # random observation
+        num_envs = self.joint_pos.shape[0]
+        obs_shape = (num_envs, 4)
+        obs = torch.rand(obs_shape)
         observations = {"policy": obs}
         return observations
 
@@ -161,10 +190,14 @@ def compute_rewards(
     cart_vel: torch.Tensor,
     reset_terminated: torch.Tensor,
 ):
-    rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
-    rew_termination = rew_scale_terminated * reset_terminated.float()
-    rew_pole_pos = rew_scale_pole_pos * torch.sum(torch.square(pole_pos).unsqueeze(dim=1), dim=-1)
-    rew_cart_vel = rew_scale_cart_vel * torch.sum(torch.abs(cart_vel).unsqueeze(dim=1), dim=-1)
-    rew_pole_vel = rew_scale_pole_vel * torch.sum(torch.abs(pole_vel).unsqueeze(dim=1), dim=-1)
-    total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_vel + rew_pole_vel
+    # rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
+    # rew_termination = rew_scale_terminated * reset_terminated.float()
+    # rew_pole_pos = rew_scale_pole_pos * torch.sum(torch.square(pole_pos).unsqueeze(dim=1), dim=-1)
+    # rew_cart_vel = rew_scale_cart_vel * torch.sum(torch.abs(cart_vel).unsqueeze(dim=1), dim=-1)
+    # rew_pole_vel = rew_scale_pole_vel * torch.sum(torch.abs(pole_vel).unsqueeze(dim=1), dim=-1)
+    # total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_vel + rew_pole_vel
+    
+    # a ramdom reward
+    num_envs = pole_pos.shape[0]
+    total_reward = torch.rand(num_envs)
     return total_reward
