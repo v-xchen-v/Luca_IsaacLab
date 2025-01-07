@@ -1,1 +1,0 @@
-# To: source/extensions/omni.isaac.lab_tasks/omni/isaac/lab_tasks/direct/simplified_catchthrown/simplified_catchthrown_env.py
