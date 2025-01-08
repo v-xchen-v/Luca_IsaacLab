@@ -204,6 +204,10 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         distance = torch.norm(sphere_pos - self.end_effector_pos, dim=1)
         intercepted = distance < 0.1
         out_of_bounds = intercepted | out_of_bounds
+        
+        # if the sphere's x is bigger than the end effector's x, then terminate the episode
+        miss_ee = sphere_pos[:, 0] > 0 #self.end_effector_pos[:, 0]
+        out_of_bounds = miss_ee | out_of_bounds
         return out_of_bounds, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
@@ -255,7 +259,7 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
         external_wrench_b = torch.zeros(self.sphere_object.num_instances, len(body_ids), 6, device=joint_pos.device)
         # Every 2nd cube should have a force applied to it
         external_wrench_b[env_ids, :, 0] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
-        external_wrench_b[env_ids, :, 2] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*50
+        external_wrench_b[env_ids, :, 2] = 9.81 * self.sphere_object.root_physx_view.get_masses()[0]*45
         self.sphere_object.set_external_force_and_torque(
             forces=external_wrench_b[..., :3], 
             torques=external_wrench_b[..., 3:], body_ids=body_ids)
