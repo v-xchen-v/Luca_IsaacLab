@@ -32,7 +32,7 @@ class ArmHandSimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
     decimation = 2
     episode_length_s = 5.0
     action_scale = 100.0  # [N]
-    action_space = 7
+    action_space = 7+12 # 7 joints for the robot arm and 12 joints for the hand
     observation_space = 7+7+3
     state_space = 0
 
@@ -40,7 +40,7 @@ class ArmHandSimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
 
     # robot
-    robot_cfg: ArticulationCfg = REALMAN_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    robot_cfg: ArticulationCfg = REALMAN_XHAND_R_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     # cart_dof_name = "realman_all"
     # pole_dof_name = "realman_tmp"
 
@@ -69,7 +69,21 @@ class ArmHandSimplifiedCatchThrownEnv(DirectRLEnv):
         # self._pole_dof_idx, _ = self.cartpole.find_joints(self.cfg.pole_dof_name)
         
         # Ref: source/extensions/omni.isaac.lab/omni/isaac/lab/assets/articulation/articulation.py
-        dof_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+        dof_names = [
+            "joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7",
+            "right_hand_index_bend_joint",
+            "right_hand_mid_joint1", 
+            "right_hand_pinky_joint1", 
+            "right_hand_ring_joint1", 
+            "right_hand_thumb_bend_joint",
+            "right_hand_index_joint1", 
+            "right_hand_index_joint2", 
+            "right_hand_mid_joint2", 
+            "right_hand_pinky_joint2", 
+            "right_hand_ring_joint2", 
+            "right_hand_thumb_rota_joint1", 
+            "right_hand_thumb_rota_joint2"
+        ]
         self.dof_idx, self.dof_names = self.cartpole.find_joints(dof_names)
         self.action_scale = self.cfg.action_scale
 

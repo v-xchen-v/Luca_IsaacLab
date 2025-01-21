@@ -54,6 +54,7 @@ REALMAN_XHAND_R_CFG = ArticulationCfg(
             "right_hand_index_joint2": 0, 
             "right_hand_mid_joint2": 0, 
             "right_hand_pinky_joint2": 0, 
+            "right_hand_ring_joint2": 0, 
             "right_hand_thumb_rota_joint1": 0, 
             "right_hand_thumb_rota_joint2": 0,
         },
