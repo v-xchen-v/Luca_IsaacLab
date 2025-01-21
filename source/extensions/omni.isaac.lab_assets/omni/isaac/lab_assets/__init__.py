@@ -41,3 +41,4 @@ from .shadow_hand import *
 from .unitree import *
 from .universal_robots import *
 from .realman import *
+from .realman_xhand_R import *
