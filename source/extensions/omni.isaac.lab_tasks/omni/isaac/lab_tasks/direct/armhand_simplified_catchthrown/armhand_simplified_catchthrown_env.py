@@ -89,6 +89,12 @@ class ArmHandSimplifiedCatchThrownEnv(DirectRLEnv):
 
         self.joint_pos = self.cartpole.data.joint_pos
         self.joint_vel = self.cartpole.data.joint_vel
+        
+        # splits to two steps
+        self.step_stage = torch.ones((self.num_envs, 1)).to(self.device)# Start with step 1
+        self.threshold_1 = 0.015 # Distance threshold for step 1
+        
+        self.num_arm_dof = 7
 
     def _setup_scene(self):
         self.cartpole = Articulation(self.cfg.robot_cfg)
@@ -130,7 +136,16 @@ class ArmHandSimplifiedCatchThrownEnv(DirectRLEnv):
         
         self.actions = self.action_scale * actions.clone()
 
+
     def _apply_action(self) -> None:
+        # if self.step_stage == 1:
+        #     self.actions[-12:] = 0.0
+        # else:
+        #     self.actions[:7] = 0.0
+        
+        # self.step_stage is [num_envs, 1], got where the value is 1, can set the self.actions[idx,self.num_arm_dof:] to 0
+        self.actions[self.step_stage[:, 0] == 1, self.num_arm_dof:] = 0.0
+        
         self.cartpole.set_joint_effort_target(self.actions, joint_ids=self.dof_idx)
 
     def _get_observations(self) -> dict:
@@ -182,6 +197,9 @@ class ArmHandSimplifiedCatchThrownEnv(DirectRLEnv):
         # stack all the observations
         obs = torch.cat((self.sphere_pos, self.sphere_vel, self.end_effector_pos, self.end_effector_vel, relative_pos), dim=-1)
         
+        # distance of ee and ball to determine step stage
+        distance = torch.norm(self.sphere_pos - self.end_effector_pos, dim=1)
+        self.step_stage[distance < self.threshold_1, 0] = torch.tensor(2, dtype=torch.float32).to(self.device) # if distance < threshold, then step 2, else step 1
         
         observations = {"policy": obs}
         return observations
@@ -295,6 +313,8 @@ def compute_rewards(
     ee_pos: torch.Tensor,
     ee_vel: torch.Tensor,
     reset_terminated: torch.Tensor,
+    # step_stage: int,
+    # step_threshold: float,
 ):
     # rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
     # rew_termination = rew_scale_terminated * reset_terminated.float()
@@ -315,6 +335,9 @@ def compute_rewards(
     # get distance between sphere and end effector
     distance = torch.norm(sphere_pos - ee_pos, dim=1)
     
+    # if step_stage == 1 and distance < step_threshold:
+    #     step_stage = 2
+        
     # determine if the sphere is intercepted by the end effector
     intercepted = distance < 0.1
     intercepted_reward = torch.where(intercepted, torch.tensor(1.0), torch.tensor(-1.0))
