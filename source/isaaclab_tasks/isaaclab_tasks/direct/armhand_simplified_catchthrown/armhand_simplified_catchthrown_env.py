@@ -9,22 +9,22 @@ import math
 import torch
 from collections.abc import Sequence
 
-from omni.isaac.lab_assets.cartpole import CARTPOLE_CFG
-from omni.isaac.lab_assets.realman import REALMAN_CFG
-from omni.isaac.lab_assets.realman_xhand_R import REALMAN_XHAND_R_CFG
+from isaaclab_assets.robots.cartpole import CARTPOLE_CFG
+from isaaclab_assets.robots.realman import REALMAN_CFG
+from isaaclab_assets.robots.realman_xhand_R import REALMAN_XHAND_R_CFG
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import Articulation, ArticulationCfg
-from omni.isaac.lab.envs import DirectRLEnv, DirectRLEnvCfg
-from omni.isaac.lab.scene import InteractiveSceneCfg
-from omni.isaac.lab.sim import SimulationCfg
-from omni.isaac.lab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
-from omni.isaac.lab.utils import configclass
-from omni.isaac.lab.utils.math import sample_uniform
+import isaaclab.sim as sim_utils
+from isaaclab.assets import Articulation, ArticulationCfg
+from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sim import SimulationCfg
+from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
+from isaaclab.utils import configclass
+from isaaclab.utils.math import sample_uniform
 
 # Then you’ll probably have to start the SimulationApp() before importing those packages
-import omni.isaac.core.utils.prims as prim_utils
-from omni.isaac.lab.assets import RigidObjectCfg, RigidObject
+import isaacsim.core.utils.prims as prim_utils
+from isaaclab.assets import RigidObjectCfg, RigidObject
 
 @configclass
 class ArmHandSimplifiedCatchThrownEnvCfg(DirectRLEnvCfg):

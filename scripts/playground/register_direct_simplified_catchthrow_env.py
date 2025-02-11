@@ -1,7 +1,7 @@
 # To: source/extensions/omni.isaac.lab_tasks/omni/isaac/lab_tasks/direct/simplified_catchthrown/simplified_catchthrown_env.py
 # Ref: https://isaac-sim.github.io/IsaacLab/main/source/tutorials/03_envs/register_rl_env_gym.html#
 import argparse
-from omni.isaac.lab.app import AppLauncher
+from isaaclab.app import AppLauncher
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Random agent for Isaac Lab environments.")
@@ -25,8 +25,8 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 import gymnasium as gym
 import torch
-import omni.isaac.lab_tasks  # noqa: F401
-from omni.isaac.lab_tasks.utils import parse_env_cfg
+import isaaclab_tasks  # noqa: F401
+from isaaclab_tasks.utils import parse_env_cfg
 
 def main():
     """Random actions agent with Isaac Lab environment."""

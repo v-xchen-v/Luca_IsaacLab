@@ -3,21 +3,21 @@
 # Ref: source/extensions/omni.isaac.lab/test/assets/test_rigid_object.py
 
 """Launch Isaac Sim Simulator first."""
-from omni.isaac.lab.app import AppLauncher
+from isaaclab.app import AppLauncher
 # launch omniverse app
 app_launcher = AppLauncher(headless=False)
 simulation_app = app_launcher.app
 
-import omni.isaac.lab.sim as sim_utils
+import isaaclab.sim as sim_utils
 # Then you’ll probably have to start the SimulationApp() before importing those packages
-import omni.isaac.core.utils.prims as prim_utils
-from omni.isaac.lab.assets import RigidObjectCfg, RigidObject
-import omni.isaac.lab.utils.math as math_utils
+import isaacsim.core.utils.prims as prim_utils
+from isaaclab.assets import RigidObjectCfg, RigidObject
+import isaaclab.utils.math as math_utils
 import omni
 
 import torch
 """Rest everything follows."""
-from omni.isaac.lab.sim import SimulationContext
+from isaaclab.sim import SimulationContext
 
 from omni.physx import get_physx_interface
 from pxr import UsdPhysics, Gf

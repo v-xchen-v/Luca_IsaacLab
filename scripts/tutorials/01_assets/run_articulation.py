@@ -43,13 +43,7 @@ from isaaclab.sim import SimulationContext
 ##
 # Pre-defined configs
 ##
-<<<<<<< HEAD:source/standalone/tutorials/01_assets/run_articulation.py
-from omni.isaac.lab_assets import CARTPOLE_CFG  # isort:skip
-from omni.isaac.lab_assets import REALMAN_XHAND_R_CFG
-=======
-from isaaclab_assets import CARTPOLE_CFG  # isort:skip
->>>>>>> upstream/main:scripts/tutorials/01_assets/run_articulation.py
-
+from isaaclab_assets.robots import CARTPOLE_CFG  # isort:skip
 
 def design_scene() -> tuple[dict, list[list[float]]]:
     """Designs the scene."""
@@ -69,7 +63,7 @@ def design_scene() -> tuple[dict, list[list[float]]]:
     prim_utils.create_prim("/World/Origin2", "Xform", translation=origins[1])
 
     # Articulation
-    cartpole_cfg = REALMAN_XHAND_R_CFG.copy()
+    cartpole_cfg = CARTPOLE_CFG.copy()
     cartpole_cfg.prim_path = "/World/Origin.*/Robot"
     cartpole = Articulation(cfg=cartpole_cfg)
 

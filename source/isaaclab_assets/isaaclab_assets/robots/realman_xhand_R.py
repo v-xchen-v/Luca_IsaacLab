@@ -14,10 +14,10 @@ The following configurations are available:
 * :obj:`FRANKA_PANDA_HIGH_PD_CFG`: Franka Emika Panda robot with Panda hand with stiffer PD control
 """
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.actuators import ImplicitActuatorCfg
-from omni.isaac.lab.assets.articulation import ArticulationCfg
-from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.assets.articulation import ArticulationCfg
+from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 
 ##
 # Configuration

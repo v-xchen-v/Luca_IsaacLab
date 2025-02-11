@@ -19,7 +19,7 @@
 
 import argparse
 
-from omni.isaac.lab.app import AppLauncher
+from isaaclab.app import AppLauncher
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Tutorial on spawning and interacting with an articulation.")
@@ -36,18 +36,18 @@ simulation_app = app_launcher.app
 
 import torch
     
-import omni.isaac.core.utils.prims as prim_utils
+import isaacsim.core.utils.prims as prim_utils
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import Articulation
-from omni.isaac.lab.sim import SimulationContext
+import isaaclab.sim as sim_utils
+from isaaclab.assets import Articulation
+from isaaclab.sim import SimulationContext
 
 ##
 # Pre-defined configs
 ##
-from omni.isaac.lab_assets import CARTPOLE_CFG  # isort:skip
-from omni.isaac.lab_assets import REALMAN_CFG
-from omni.isaac.lab_assets import REALMAN_XHAND_R_CFG
+from isaaclab_assets import CARTPOLE_CFG  # isort:skip
+from isaaclab_assets import REALMAN_CFG
+from isaaclab_assets import REALMAN_XHAND_R_CFG
 
 
 def design_scene() -> tuple[dict, list[list[float]]]:

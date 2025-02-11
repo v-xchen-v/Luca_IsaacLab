@@ -1,20 +1,20 @@
 # Ref: https://isaac-sim.github.io/IsaacLab/main/source/tutorials/01_assets/run_rigid_object.html
 
 """Launch Isaac Sim Simulator first."""
-from omni.isaac.lab.app import AppLauncher
+from isaaclab.app import AppLauncher
 # launch omniverse app
 app_launcher = AppLauncher(headless=False)
 simulation_app = app_launcher.app
 
-import omni.isaac.lab.sim as sim_utils
+import isaaclab.sim as sim_utils
 # Then you’ll probably have to start the SimulationApp() before importing those packages
-import omni.isaac.core.utils.prims as prim_utils
-from omni.isaac.lab.assets import RigidObjectCfg, RigidObject
+import isaacsim.core.utils.prims as prim_utils
+from isaaclab.assets import RigidObjectCfg, RigidObject
 
 
 
 """Rest everything follows."""
-from omni.isaac.lab.sim import SimulationContext
+from isaaclab.sim import SimulationContext
 
 def design_scene():
     """Designs the scene."""
