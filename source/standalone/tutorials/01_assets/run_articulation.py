@@ -44,6 +44,7 @@ from omni.isaac.lab.sim import SimulationContext
 # Pre-defined configs
 ##
 from omni.isaac.lab_assets import CARTPOLE_CFG  # isort:skip
+from omni.isaac.lab_assets import REALMAN_XHAND_R_CFG
 
 
 def design_scene() -> tuple[dict, list[list[float]]]:
@@ -64,7 +65,7 @@ def design_scene() -> tuple[dict, list[list[float]]]:
     prim_utils.create_prim("/World/Origin2", "Xform", translation=origins[1])
 
     # Articulation
-    cartpole_cfg = CARTPOLE_CFG.copy()
+    cartpole_cfg = REALMAN_XHAND_R_CFG.copy()
     cartpole_cfg.prim_path = "/World/Origin.*/Robot"
     cartpole = Articulation(cfg=cartpole_cfg)
 
@@ -105,9 +106,10 @@ def run_simulator(sim: sim_utils.SimulationContext, entities: dict[str, Articula
             print("[INFO]: Resetting robot state...")
         # Apply random action
         # -- generate random joint efforts
-        efforts = torch.randn_like(robot.data.joint_pos) * 5.0
+        efforts = torch.ones_like(robot.data.joint_pos) * 0.05#5.0
         # -- apply action to the robot
-        robot.set_joint_effort_target(efforts)
+        # robot.set_joint_effort_target(efforts)
+        robot.set_joint_position_target(efforts)
         # -- write data to sim
         robot.write_data_to_sim()
         # Perform step

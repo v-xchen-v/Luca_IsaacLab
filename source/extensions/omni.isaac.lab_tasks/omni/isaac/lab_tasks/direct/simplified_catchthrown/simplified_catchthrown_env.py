@@ -232,7 +232,9 @@ class SimplifiedCatchThrownEnv(DirectRLEnv):
 
         self.cartpole.write_root_link_pose_to_sim(default_root_state[:, :7], env_ids)
         self.cartpole.write_root_com_velocity_to_sim(default_root_state[:, 7:], env_ids)
-        self.cartpole.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+        # self.cartpole.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+        self.cartpole.set_joint_position_target(joint_pos, env_ids=env_ids)
+        self.cartpole.write_data_to_sim()
         
         
         # reset the sphere as default position
